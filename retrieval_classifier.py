@@ -8,7 +8,10 @@
 """
 import os
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+# 设置要使用的显卡编号，0 表示第一张显卡，可根据需要修改
+CUDA_DEVICE_ID = 0  
+os.environ["CUDA_VISIBLE_DEVICES"] = str(CUDA_DEVICE_ID)
 
 import pandas as pd
 import numpy as np
@@ -30,6 +33,10 @@ set_seed(42)
 torch.manual_seed(42)
 np.random.seed(42)
 random.seed(42)
+
+# 检查 CUDA 设备可用性
+device = torch.device(f"cuda:{CUDA_DEVICE_ID}" if torch.cuda.is_available() else "cpu")
+print(f"使用设备: {device}")
 
 def create_synthetic_dataset():
     """
@@ -95,7 +102,7 @@ def main():
         id2label=id2label,
         label2id=label2id
     )
-    model = model.to("cuda:0")
+    model = model.to(device)
     
     # 数据预处理函数
     def preprocess_data(examples):
@@ -147,7 +154,7 @@ def test_model():
     # 加载训练好的模型和 tokenizer
     tokenizer = AutoTokenizer.from_pretrained("roberta-base")
     model = AutoModelForSequenceClassification.from_pretrained("/workspace/TTP-LLM/retrieval_classifier_final")
-    model = model.to("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
     
     # 测试问题
     test_questions = [
@@ -161,7 +168,7 @@ def test_model():
     # 进行预测
     for question in test_questions:
         inputs = tokenizer(question, return_tensors="pt", padding="max_length", truncation=True, max_length=512)
-        inputs = {k: v.to("cuda:0" if torch.cuda.is_available() else "cpu") for k, v in inputs.items()}
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         
         with torch.no_grad():
             outputs = model(**inputs)
